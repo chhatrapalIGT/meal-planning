@@ -8,7 +8,8 @@ const Mealplan = require('../models/Mealplan');
 const config = require('../config/config');
 const Mendietplan = require('../models/Mendietplan')
 const Womendietplan = require('../models/Womendietplan')
-
+require("dotenv").config({ path: ".env" });
+console.log(process.env.SECRET)
 // Register a new user
 exports.register = async (req, res) => {
   try {
@@ -34,7 +35,7 @@ exports.register = async (req, res) => {
     });
 
     await user.save();
-    const authToken = jwt.sign({ userId: user._id }, config.secret, { expiresIn: '1h' });
+    const authToken = jwt.sign({ userId: user._id }, process.env.SECRET, { expiresIn: '1h' });
 
     user.authToken = authToken;
     await user.save();
