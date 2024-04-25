@@ -284,3 +284,25 @@ exports.datWiseMealPlan = async (req, res) => {
     res.status(500).json({ success: false, message: error.message });
   }
 };
+
+exports.findAllGroupArray = async (req, res) => {
+  try {
+    const alternatives = await Alimenti.aggregate([
+      { $match: { 'List of Alternatives (Food group)': { $exists: true } } },
+      { $group: { _id: '$List of Alternatives (Food group)' } },
+      { $project: { _id: 0, 'List of Alternatives (Food group)': '$_id' } }
+    ]);
+
+    // Extracting only the values from the array of objects
+    const data = alternatives.map(item => item['List of Alternatives (Food group)']);
+
+    res.json({
+      success: true,
+      message: "FoodGroup Data Get successfully",
+      data: data,
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+};

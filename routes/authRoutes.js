@@ -11,6 +11,7 @@ router.post('/login', authController.login);
 router.post('/selectPlan', authController.selectPlan);
 router.post('/findNameOfAlimenti', authController.findNameOfAlimenti);
 router.post('/findDayWise', authController.datWiseMealPlan);
+router.post('/findAllGroupArray', authController.findAllGroupArray);
 
 
 module.exports = router;
