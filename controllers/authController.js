@@ -312,11 +312,6 @@ exports.datWiseMealPlan = async (req, res) => {
     const existingUser = await User.findOne({ username: username });
     if (!existingUser) throw new Error("user not found");
     const gender = existingUser.gender.toLowerCase();
-    let mealData;
-    // if (!day && !mealType) {
-    //   const allMealData = await Mendietplan.find();
-    //   return res.json(allMealData);
-    // }
 
     let query = {};
     if (day) {
@@ -326,26 +321,67 @@ exports.datWiseMealPlan = async (req, res) => {
       query.Meal = { $in: mealType };
     }
 
-    if (gender === "male") {
-      console.log("enter male :>> ");
-      mealData = await Mendietplan.find(query);
-    } else if (gender === "female") {
-      console.log("enter female :>> ");
-      mealData = await Womendietplan.find(query);
-    } else {
-      return res.status(400).json({ message: "Invalid gender" });
-    }
+    const collection = gender === "male" ? Mendietplan : Womendietplan;
+
+    const mealData = await collection
+      .aggregate([
+        { $match: query },
+        {
+          $lookup: {
+            from: "Alimenti",
+            localField: "Items._id",
+            foreignField: "_id",
+            as: "ItemsDetails",
+          },
+        },
+        {
+          $addFields: {
+            Items: {
+              $map: {
+                input: "$Items",
+                as: "item",
+                in: {
+                  $mergeObjects: [
+                    "$$item",
+                    {
+                      $arrayElemAt: [
+                        {
+                          $filter: {
+                            input: "$ItemsDetails",
+                            as: "itemDetail",
+                            cond: { $eq: ["$$itemDetail._id", "$$item._id"] },
+                          },
+                        },
+                        0,
+                      ],
+                    },
+                  ],
+                },
+              },
+            },
+          },
+        },
+        {
+          $project: {
+            ItemsDetails: 0,
+            "Items.Name": 0,
+          },
+        },
+      ])
+      .exec();
 
     if (mealData.length === 0) {
       return res
         .status(404)
         .json({ error: `No meal plan found for the given parameters.` });
     }
+
     return res.json({
       success: true,
       message: "meal plan data get successfully",
       data: mealData,
     });
+    console.log("🚀 ~ exports.datWiseMealPlan= ~ mealData:", mealData);
   } catch (error) {
     console.error(error);
     res.status(500).json({ success: false, message: error.message });
