@@ -51,7 +51,7 @@ exports.register = async (req, res) => {
     const user = new User({
       IDnumber: IDnumber || generatedID.toString(),
       gender,
-      username,
+      username: username.toLowerCase(),
       password: hashedPassword,
       termsAndConditions,
     });
@@ -117,7 +117,7 @@ exports.login = async (req, res) => {
     }
 
     // Find the user by username
-    const user = await User.findOne({ username });
+    const user = await User.findOne({ username: username.toLowerCase() });
     console.log(user);
 
     // If the user does not exist, return an error
