@@ -8,13 +8,31 @@ const Mealplan = require("../models/Mealplan");
 const config = require("../config/config");
 const Mendietplan = require("../models/Mendietplan");
 const Womendietplan = require("../models/Womendietplan");
+const MailService = require("../utils/mail");
+const OTP = require("../models/OTP");
+const sendResponse = require("../utils/sendResponse");
 require("dotenv").config({ path: ".env" });
-console.log(process.env.SECRET);
+//generateOTP function
+function generateOTP() {
+  return Math.floor(1000 + Math.random() * 9000).toString();
+}
+
 // Register a new user
 exports.register = async (req, res) => {
   try {
-    const { IDnumber, gender, username, password, termsAndConditions } =
-      req.body;
+    const {
+      IDnumber,
+      gender,
+      username,
+      email,
+      password,
+      confirmPassword,
+      termsAndConditions,
+    } = req.body;
+
+    if (password !== confirmPassword) {
+      return sendResponse(res, 400, "Password don't match");
+    }
 
     let generatedID;
     if (
@@ -25,25 +43,29 @@ exports.register = async (req, res) => {
     ) {
       generatedID = generateUniqueID(Math.floor(Math.random() * 3) + 3);
     }
-    if (!termsAndConditions || !username || !password || !gender) {
+
+    if (!termsAndConditions || !username || !email || !password || !gender) {
       let missingFields = [];
       if (!termsAndConditions) missingFields.push("terms and conditions");
       if (!username) missingFields.push("username");
+      if (!email) missingFields.push("email");
       if (!password) missingFields.push("password");
+      if (!confirmPassword) missingFields.push("confirmPassword");
       if (!gender) missingFields.push("gender");
 
-      return res.status(400).json({
-        message: `The following fields are missing: ${missingFields.join(
+      return sendResponse(
+        res,
+        400,
+        `The following fields are missing: ${missingFields.join(
           ", "
-        )}. Please fill them out.`,
-      });
+        )}. Please fill them out.`
+      );
     }
 
-    const existingUser = await User.findOne({
-      $or: [{ username }, { password }],
-    });
+    const existingUser = await User.findOne({ email: email.toLowerCase() });
+
     if (existingUser) {
-      return res.status(400).json({ message: "User already exists" });
+      return sendResponse(res, 409, "User already exists");
     }
 
     const hashedPassword = await bcrypt.hash(password, 10);
@@ -51,25 +73,27 @@ exports.register = async (req, res) => {
     const user = new User({
       IDnumber: IDnumber || generatedID.toString(),
       gender,
-      username: username.toLowerCase(),
+      username: username,
+      email: email.toLowerCase(),
       password: hashedPassword,
       termsAndConditions,
     });
 
     await user.save();
-    const authToken = jwt.sign({ userId: user._id }, process.env.SECRET, {
-      expiresIn: "1h",
-    });
+    const authToken = jwt.sign({ userId: user._id }, process.env.SECRET);
 
     user.authToken = authToken;
     await user.save();
 
-    res
-      .status(201)
-      .json({ message: "User registered successfully", authToken });
+    return sendResponse(res, 200, "User registered successfully", {
+      authToken: authToken,
+    });
   } catch (error) {
     console.error(error);
-    res.status(500).json({ message: error.message });
+
+    return res.status(500).json({
+      message: error.message || "Something went wrong",
+    });
   }
 };
 
@@ -79,71 +103,226 @@ function generateUniqueID(length) {
   return Math.floor(Math.random() * (max - min + 1)) + min;
 }
 
-// Verify user registration with authentication token
-exports.verifyRegistration = async (req, res) => {
-  try {
-    const { authToken } = req.body;
-
-    // Decode the authentication token
-    const decoded = jwt.verify(authToken, config.secret);
-
-    // Find the user by ID and update the verification status
-    await User.findByIdAndUpdate(decoded.userId, { isVerified: true });
-
-    res
-      .status(200)
-      .json({ message: "User registration verified successfully" });
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ message: "Internal server error" });
-  }
-};
-
-// Login a user
 exports.login = async (req, res) => {
   try {
-    const { username, password } = req.body;
+    const { email, password } = req.body;
 
-    if (!username || !password) {
+    if (!email || !password) {
       let missingFields = [];
-      if (!username) missingFields.push("username");
+      if (!email) missingFields.push("email");
       if (!password) missingFields.push("password");
 
-      return res.status(400).json({
-        message: `The following fields are missing: ${missingFields.join(
+      return sendResponse(
+        res,
+        400,
+        `The following fields are missing: ${missingFields.join(
           ", "
-        )}. Please fill them out.`,
-      });
+        )}. Please fill them out.`
+      );
     }
 
     // Find the user by username
-    const user = await User.findOne({ username: username.toLowerCase() });
-    console.log(user);
+    const user = await User.findOne({ email: email.toLowerCase() });
 
     // If the user does not exist, return an error
     if (!user) {
-      return res.status(404).json({ message: "User not found" });
+      return sendResponse(res, 404, "User not found");
     }
 
     // Check if the password is correct
     const isPasswordValid = await bcrypt.compare(password, user.password);
     if (!isPasswordValid) {
-      return res.status(401).json({ message: "Invalid password" });
+      return sendResponse(res, 401, "Invalid password");
     }
 
     // Generate JWT token
-    const authToken = jwt.sign({ userId: user._id }, process.env.SECRET, {
-      expiresIn: "1h",
-    });
+    const authToken = jwt.sign({ userId: user._id }, process.env.SECRET);
 
     // Return the token and user details
-    res.status(200).json({
-      authToken,
-      user: { id: user._id, username: user.username, Gender: user.gender },
+    return sendResponse(res, 200, " Login successfully", {
+      authToken: authToken,
     });
   } catch (error) {
     console.error(error);
-    res.status(500).json({ message: "Internal server error" });
+
+    return res.status(500).json({
+      message: error.message || "Something went wrong",
+    });
+  }
+};
+
+exports.changePassword = async (req, res) => {
+  try {
+    const { currentPassword, newPassword, confirmPassword } = req.body;
+
+    if (!currentPassword || !newPassword || !confirmPassword) {
+      let missingFields = [];
+      if (!currentPassword) missingFields.push("Current password");
+      if (!newPassword) missingFields.push("New password");
+      if (!confirmPassword) missingFields.push("Confirm password");
+
+      return sendResponse(
+        res,
+        400,
+        `The following fields are missing: ${missingFields.join(
+          ", "
+        )}. Please fill them out.`
+      );
+    }
+
+    if (newPassword !== confirmPassword) {
+      return sendResponse(
+        res,
+        400,
+        "New password and confirm password don't match"
+      );
+    }
+
+    console.log(req.user.id);
+    // Find the user by ID
+    const user = await User.findById(req.user.id);
+    console.log(user);
+    if (!user) {
+      return sendResponse(res, 404, "User not found");
+    }
+
+    // Check if the current password is correct
+    const isCurrentPasswordValid = await bcrypt.compare(
+      currentPassword,
+      user.password
+    );
+    if (!isCurrentPasswordValid) {
+      return sendResponse(res, 400, "Current password is incorrect");
+    }
+
+    // Hash the new password
+    const hashedNewPassword = await bcrypt.hash(newPassword, 10);
+
+    // Update the user's password
+    user.password = hashedNewPassword;
+    await user.save();
+
+    return sendResponse(res, 200, "Password changed successfully");
+  } catch (error) {
+    console.error(error.message);
+
+    return res.status(500).json({
+      message: error.message || "Something went wrong",
+    });
+  }
+};
+// Forgot Password
+exports.forgotPassword = async (req, res) => {
+  try {
+    const { email } = req.body;
+
+    if (!email) {
+      return sendResponse(res, 400, "Email is required");
+    }
+
+    const user = await User.findOne({ email: email.toLowerCase() });
+    if (!user) {
+      return sendResponse(res, 404, "User not found");
+    }
+
+    const otp = generateOTP();
+    const expiresAt = new Date(Date.now() + 2 * 60 * 1000); // 2 minutes from now
+
+    // Temporary stop the resend otp functionality for 1 minute
+    //  -->>
+    // const existingOTP = await OTP.findOneAndUpdate(
+    //   { email: email.toLowerCase() },
+    //   { otp, expiresAt, lastResend: new Date(0) }, // Set lastResend to a past date
+    //   { upsert: true, new: true }
+    // );
+
+    let existingOTP = await OTP.findOne({ email: email.toLowerCase() });
+
+    if (existingOTP) {
+      const resendInterval = 2 * 60 * 1000;
+      const now = Date.now();
+
+      if (now - existingOTP.lastResend.getTime() < resendInterval) {
+        const waitTime = Math.round(
+          (resendInterval - (now - existingOTP.lastResend.getTime())) / 1000
+        );
+        return sendResponse(
+          res,
+          429,
+          `Please wait ${waitTime} seconds before requesting a new OTP`
+        );
+      }
+
+      existingOTP.otp = otp;
+      existingOTP.expiresAt = expiresAt;
+      existingOTP.lastResend = new Date();
+      await existingOTP.save();
+    } else {
+      // If no OTP entry exists, create a new one
+      await OTP.create({
+        email: email.toLowerCase(),
+        otp,
+        expiresAt,
+        lastResend: new Date(),
+      });
+    }
+
+    MailService(email, "Password Reset OTP", otp);
+
+    return sendResponse(res, 200, "OTP sent to your email");
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({
+      message: error.message || "Something went wrong",
+    });
+  }
+};
+
+//Reset Password
+exports.resetPassword = async (req, res) => {
+  try {
+    const { email, otp, newPassword, confirmPassword } = req.body;
+
+    if (!email || !otp || !newPassword || !confirmPassword) {
+      return sendResponse(
+        res,
+        400,
+        "Email, OTP, and new password are required"
+      );
+    }
+
+    const checkEmail = await User.findOne({ email: email.toLowerCase() });
+
+    if (!checkEmail) {
+      return sendResponse(res, 400, "Email not found");
+    }
+
+    const otpEntry = await OTP.findOne({ email: email.toLowerCase(), otp });
+
+    if (!otpEntry) {
+      return sendResponse(res, 400, "Invalid OTP");
+    }
+
+    if (otpEntry.expiresAt < new Date()) {
+      return sendResponse(res, 400, "OTP has expired");
+    }
+
+    if (newPassword !== confirmPassword) {
+      return sendResponse(res, 400, "Password don't match");
+    }
+
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+    await User.updateOne(
+      { email: email.toLowerCase() },
+      { password: hashedPassword }
+    );
+
+    await OTP.deleteOne({ email: email.toLowerCase(), otp });
+
+    return sendResponse(res, 200, "Password reset successfully");
+  } catch (error) {
+    console.error(error);
+    return sendResponse(res, 500, error.message || "Something went wrong");
   }
 };
 
@@ -196,7 +375,7 @@ exports.selectPlan = async (req, res) => {
     });
   } catch (error) {
     console.error(error);
-    res.status(500).json({ success: false, message: error.message });
+    return sendResponse(res, 500, error.message);
   }
 };
 
@@ -295,22 +474,27 @@ exports.findNameOfAlimenti = async (req, res) => {
 
 exports.datWiseMealPlan = async (req, res) => {
   try {
-    const { username, day, mealType } = req.body;
+    const { day, mealType } = req.body;
+    const email = req.user.email;
 
-    if (!username || !mealType) {
+    if (!email || !mealType) {
       let missingFields = [];
-      if (!username) missingFields.push("username");
       if (!mealType) missingFields.push("mealType");
 
-      return res.status(400).json({
-        message: `The following fields are missing: ${missingFields.join(
+      return sendResponse(
+        res,
+        400,
+        `The following fields are missing: ${missingFields.join(
           ", "
-        )}. Please fill them out.`,
-      });
+        )}. Please fill them out.`
+      );
     }
 
-    const existingUser = await User.findOne({ username: username });
-    if (!existingUser) throw new Error("user not found");
+    const existingUser = await User.findOne({ email: email });
+
+    if (!existingUser) {
+      return sendResponse(res, 404, "User not found");
+    }
     const gender = existingUser.gender.toLowerCase();
 
     let query = {};
@@ -371,20 +555,22 @@ exports.datWiseMealPlan = async (req, res) => {
       .exec();
 
     if (mealData.length === 0) {
-      return res
-        .status(404)
-        .json({ error: `No meal plan found for the given parameters.` });
+      return sendResponse(
+        res,
+        404,
+        "No meal plan found for the given parameters."
+      );
     }
 
-    return res.json({
-      success: true,
-      message: "meal plan data get successfully",
-      data: mealData,
-    });
-    console.log("🚀 ~ exports.datWiseMealPlan= ~ mealData:", mealData);
+    return (
+      sendResponse(res, 200, "Meal plan data retrieved successfully", {
+        mealData: mealData,
+      }),
+      console.log("🚀 ~ exports.datWiseMealPlan= ~ mealData:", mealData)
+    );
   } catch (error) {
     console.error(error);
-    res.status(500).json({ success: false, message: error.message });
+    return sendResponse(res, 500, error?.message || "Something went wrong");
   }
 };
 

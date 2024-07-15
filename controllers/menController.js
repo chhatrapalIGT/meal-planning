@@ -1,4 +1,5 @@
 const MenModel = require("../models/menModel");
+const sendResponse = require("../utils/sendResponse");
 
 exports.addMenDietPlan = async (req, res) => {
   try {
@@ -6,54 +7,43 @@ exports.addMenDietPlan = async (req, res) => {
 
     // Validate required fields
     if (!Day || !Meal || !Items || !Recipe) {
-      return res.status(400).json({
-        success: false,
-        message: "Please provide all required fields: Day, Meal, Items, Recipe"
-      });
+      return sendResponse(
+        res,
+        400,
+        "Please provide all required fields: Day, Meal, Items, Recipe"
+      );
     }
 
-    const formattedItems = Items.map(item => ({
+    const formattedItems = Items.map((item) => ({
       name: item.name,
-      quantity: item.quantity
+      quantity: item.quantity,
     }));
 
     const newMenDietPlan = await MenModel.create({
       Day,
       Meal,
       Items: formattedItems,
-      Recipe
+      Recipe,
     });
 
-    res.status(201).json({
-      success: true,
-      message: "Men's diet plan added successfully",
-      data: newMenDietPlan
+    return sendResponse(res, 200, "Men's diet plan added successfully", {
+      newMenDietPlan: newMenDietPlan,
     });
   } catch (error) {
     console.error(error);
-    res.status(500).json({
-      success: false,
-      message: "Internal server error",
-      error: error.message
-    });
+    return sendResponse(res, 500, error?.message || "Internal server error");
   }
 };
 
 exports.getAllMenDietPlans = async (req, res) => {
   try {
     const menDietPlans = await MenModel.find();
-    res.status(200).json({
-      success: true,
-      message: "Retrieved all men's diet plans",
-      data: menDietPlans
+    return sendResponse(res, 200, "Retrieved all men's diet plans", {
+      menDietPlans: menDietPlans,
     });
   } catch (error) {
     console.error(error);
-    res.status(500).json({
-      success: false,
-      message: "Internal server error",
-      error: error.message
-    });
+    return sendResponse(res, 500, error?.message || "Internal server error");
   }
 };
 
@@ -61,23 +51,14 @@ exports.getMenDietPlanById = async (req, res) => {
   try {
     const menDietPlan = await MenModel.findById(req.params.id);
     if (!menDietPlan) {
-      return res.status(404).json({
-        success: false,
-        message: "Men's diet plan not found"
-      });
+      return sendResponse(res, 404, "Men's diet plan not found");
     }
-    res.status(200).json({
-      success: true,
-      message: "Retrieved men's diet plan",
-      data: menDietPlan
+    return sendResponse(res, 200, "Retrieved men's diet plan", {
+      menDietPlan: menDietPlan,
     });
   } catch (error) {
     console.error(error);
-    res.status(500).json({
-      success: false,
-      message: "Internal server error",
-      error: error.message
-    });
+    return sendResponse(res, 500, error?.message || "Internal server error");
   }
 };
 
@@ -89,23 +70,14 @@ exports.updateMenDietPlanById = async (req, res) => {
       { new: true }
     );
     if (!updatedMenDietPlan) {
-      return res.status(404).json({
-        success: false,
-        message: "Men's diet plan not found"
-      });
+      return sendResponse(res, 404, "Men's diet plan not found");
     }
-    res.status(200).json({
-      success: true,
-      message: "Updated men's diet plan",
-      data: updatedMenDietPlan
+    return sendResponse(res, 200, "Updated men's diet plan", {
+      updatedMenDietPlan: updatedMenDietPlan,
     });
   } catch (error) {
     console.error(error);
-    res.status(500).json({
-      success: false,
-      message: "Internal server error",
-      error: error.message
-    });
+    return sendResponse(res, 500, error?.message || "Internal server error");
   }
 };
 
@@ -113,22 +85,13 @@ exports.deleteMenDietPlanById = async (req, res) => {
   try {
     const deletedMenDietPlan = await MenModel.findByIdAndDelete(req.params.id);
     if (!deletedMenDietPlan) {
-      return res.status(404).json({
-        success: false,
-        message: "Men's diet plan not found"
-      });
+      return sendResponse(res, 404, "Men's diet plan not found");
     }
-    res.status(200).json({
-      success: true,
-      message: "Deleted men's diet plan",
-      data: deletedMenDietPlan
+    return sendResponse(res, 200, "Deleted men's diet plan", {
+      deletedMenDietPlan: deletedMenDietPlan,
     });
   } catch (error) {
     console.error(error);
-    res.status(500).json({
-      success: false,
-      message: "Internal server error",
-      error: error.message
-    });
+    return sendResponse(res, 500, error?.message || "Internal server error");
   }
 };
