@@ -44,6 +44,12 @@ exports.register = async (req, res) => {
       generatedID = generateUniqueID(Math.floor(Math.random() * 3) + 3);
     }
 
+    const uniqueIdNumber = await User.findOne({ IDnumber: IDnumber });
+    console.log(uniqueIdNumber);
+    if (uniqueIdNumber) {
+      return sendResponse(res, 409, "IDnumber already exists");
+    }
+
     if (!termsAndConditions || !username || !email || !password || !gender) {
       let missingFields = [];
       if (!termsAndConditions) missingFields.push("terms and conditions");
