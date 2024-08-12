@@ -15,6 +15,6 @@ router.post('/selectPlan', authController.selectPlan);
 router.post('/findNameOfAlimenti', authController.findNameOfAlimenti);
 router.post('/findDayWise',isAuthenticated, authController.datWiseMealPlan);
 router.post('/findAllGroupArray', authController.findAllGroupArray);
+router.get('/profile',isAuthenticated,authController.userProfile)
 
-
-module.exports = router;
+module.exports = router;    

@@ -45,7 +45,6 @@ exports.register = async (req, res) => {
     }
 
     const uniqueIdNumber = await User.findOne({ IDnumber: IDnumber });
-    console.log(uniqueIdNumber);
     if (uniqueIdNumber) {
       return sendResponse(res, 409, "IDnumber already exists");
     }
@@ -92,8 +91,25 @@ exports.register = async (req, res) => {
     await user.save();
 
     return sendResponse(res, 200, "User registered successfully", {
-      authToken: authToken,
+      authToken: authToken
     });
+  } catch (error) {
+    console.error(error);
+
+    return res.status(500).json({
+      message: error.message || "Something went wrong",
+    });
+  }
+};
+
+exports.userProfile = async (req, res) => {
+  try {
+    const {email} = req.user;
+
+    return sendResponse(res, 200, "User profile get Successfully", {
+      email:email
+    });
+
   } catch (error) {
     console.error(error);
 
