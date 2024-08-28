@@ -91,7 +91,7 @@ exports.register = async (req, res) => {
     await user.save();
 
     return sendResponse(res, 200, "User registered successfully", {
-      authToken: authToken
+      authToken: authToken,
     });
   } catch (error) {
     console.error(error);
@@ -104,12 +104,11 @@ exports.register = async (req, res) => {
 
 exports.userProfile = async (req, res) => {
   try {
-    const {email} = req.user;
+    const { email } = req.user;
 
     return sendResponse(res, 200, "User profile get Successfully", {
-      email:email
+      email: email,
     });
-
   } catch (error) {
     console.error(error);
 
@@ -529,7 +528,7 @@ exports.datWiseMealPlan = async (req, res) => {
 
     const collection = gender === "male" ? Mendietplan : Womendietplan;
 
-    const mealData = await collection
+    let mealData = await collection
       .aggregate([
         { $match: query },
         {
@@ -583,6 +582,16 @@ exports.datWiseMealPlan = async (req, res) => {
         "No meal plan found for the given parameters."
       );
     }
+
+    const mealTypeOrder = {};
+
+    mealType.forEach((meal, index) => {
+      mealTypeOrder[meal] = index;
+    });
+
+    mealData.sort((a, b) => {
+      return mealTypeOrder[a.Meal] - mealTypeOrder[b.Meal];
+    });
 
     return (
       sendResponse(res, 200, "Meal plan data retrieved successfully", {
