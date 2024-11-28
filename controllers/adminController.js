@@ -7,6 +7,7 @@ const sendResponse = require("../utils/sendResponse");
 exports.adminLogin = async (req, res) => {
   try {
     const { email, password } = req.body;
+    console.log("🚀 ~ exports.adminLogin= ~  req.body:", req.body);
 
     if (!email || !password) {
       let missingFields = [];
