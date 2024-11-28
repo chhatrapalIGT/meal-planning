@@ -12,12 +12,10 @@ const MailService = require("../utils/mail");
 const OTP = require("../models/OTP");
 const sendResponse = require("../utils/sendResponse");
 require("dotenv").config({ path: ".env" });
-//generateOTP function
 function generateOTP() {
   return Math.floor(1000 + Math.random() * 9000).toString();
 }
 
-// Register a new user
 exports.register = async (req, res) => {
   try {
     const {
@@ -28,6 +26,10 @@ exports.register = async (req, res) => {
       password,
       confirmPassword,
       termsAndConditions,
+      languagePreference,
+      dietType,
+      sexAtBirth,
+      isDietaryRestrictions,
     } = req.body;
 
     if (password !== confirmPassword) {
@@ -49,7 +51,14 @@ exports.register = async (req, res) => {
       return sendResponse(res, 409, "IDnumber already exists");
     }
 
-    if (!termsAndConditions || !username || !email || !password || !gender) {
+    if (
+      !termsAndConditions ||
+      !username ||
+      !email ||
+      !password ||
+      !gender ||
+      !isDietaryRestrictions
+    ) {
       let missingFields = [];
       if (!termsAndConditions) missingFields.push("terms and conditions");
       if (!username) missingFields.push("username");
@@ -57,6 +66,8 @@ exports.register = async (req, res) => {
       if (!password) missingFields.push("password");
       if (!confirmPassword) missingFields.push("confirmPassword");
       if (!gender) missingFields.push("gender");
+      if (!dietType) missingFields.push("dietType");
+      if (!isDietaryRestrictions) missingFields.push("isDietaryRestrictions");
 
       return sendResponse(
         res,
@@ -82,13 +93,17 @@ exports.register = async (req, res) => {
       email: email.toLowerCase(),
       password: hashedPassword,
       termsAndConditions,
+      dietType,
+      dietaryRestrictions: req.body.dietaryRestrictions || [],
+      languagePreference: languagePreference,
+      sexAtBirth: sexAtBirth,
     });
 
     await user.save();
     const authToken = jwt.sign({ userId: user._id }, process.env.SECRET);
 
-    user.authToken = authToken;
-    await user.save();
+    // user.authToken = authToken;
+    // await user.save();
 
     return sendResponse(res, 200, "User registered successfully", {
       authToken: authToken,
@@ -96,18 +111,15 @@ exports.register = async (req, res) => {
   } catch (error) {
     console.error(error);
 
-    return res.status(500).json({
-      message: error.message || "Something went wrong",
-    });
+    return sendResponse(res, 500, error.message || "Something went wrong");
   }
 };
 
 exports.userProfile = async (req, res) => {
   try {
-    const { email } = req.user;
-
+    console.log("🚀 ~ exports.userProfile= ~ req.user:", req.user);
     return sendResponse(res, 200, "User profile get Successfully", {
-      email: email,
+      user: req.user,
     });
   } catch (error) {
     console.error(error);
@@ -142,33 +154,26 @@ exports.login = async (req, res) => {
       );
     }
 
-    // Find the user by username
     const user = await User.findOne({ email: email.toLowerCase() });
 
-    // If the user does not exist, return an error
     if (!user) {
       return sendResponse(res, 404, "User not found");
     }
 
-    // Check if the password is correct
     const isPasswordValid = await bcrypt.compare(password, user.password);
     if (!isPasswordValid) {
       return sendResponse(res, 401, "Invalid password");
     }
 
-    // Generate JWT token
     const authToken = jwt.sign({ userId: user._id }, process.env.SECRET);
 
-    // Return the token and user details
-    return sendResponse(res, 200, " Login successfully", {
+    return sendResponse(res, 200, "Login successfully", {
       authToken: authToken,
     });
   } catch (error) {
     console.error(error);
 
-    return res.status(500).json({
-      message: error.message || "Something went wrong",
-    });
+    return sendResponse(res, 500, error.message || "Something went wrong");
   }
 };
 
@@ -200,14 +205,12 @@ exports.changePassword = async (req, res) => {
     }
 
     console.log(req.user.id);
-    // Find the user by ID
     const user = await User.findById(req.user.id);
     console.log(user);
     if (!user) {
       return sendResponse(res, 404, "User not found");
     }
 
-    // Check if the current password is correct
     const isCurrentPasswordValid = await bcrypt.compare(
       currentPassword,
       user.password
@@ -216,10 +219,8 @@ exports.changePassword = async (req, res) => {
       return sendResponse(res, 400, "Current password is incorrect");
     }
 
-    // Hash the new password
     const hashedNewPassword = await bcrypt.hash(newPassword, 10);
 
-    // Update the user's password
     user.password = hashedNewPassword;
     await user.save();
 
@@ -227,12 +228,9 @@ exports.changePassword = async (req, res) => {
   } catch (error) {
     console.error(error.message);
 
-    return res.status(500).json({
-      message: error.message || "Something went wrong",
-    });
+    return sendResponse(res, 500, error.message || "Something went wrong");
   }
 };
-// Forgot Password
 exports.forgotPassword = async (req, res) => {
   try {
     const { email } = req.body;
@@ -279,7 +277,6 @@ exports.forgotPassword = async (req, res) => {
       existingOTP.lastResend = new Date();
       await existingOTP.save();
     } else {
-      // If no OTP entry exists, create a new one
       await OTP.create({
         email: email.toLowerCase(),
         otp,
@@ -293,13 +290,10 @@ exports.forgotPassword = async (req, res) => {
     return sendResponse(res, 200, "OTP sent to your email");
   } catch (error) {
     console.error(error);
-    return res.status(500).json({
-      message: error.message || "Something went wrong",
-    });
+    return sendResponse(res, 500, error.message || "Something went wrong");
   }
 };
 
-//Reset Password
 exports.resetPassword = async (req, res) => {
   try {
     const { email, otp, newPassword, confirmPassword } = req.body;
@@ -353,8 +347,7 @@ exports.selectPlan = async (req, res) => {
 
     const existingUser = await User.findOne({ IDnumber: IDnumber });
     if (!existingUser) throw new Error("id is not found");
-    const gender = existingUser.gender.toLowerCase(); // Convert gender to lowercase
-    // Function to calculate portion size based on rules
+    const gender = existingUser.gender.toLowerCase();
     function calculatePortionSize(gender, numberOfMeals) {
       let portionSize;
       if (gender === "female") {
@@ -384,11 +377,9 @@ exports.selectPlan = async (req, res) => {
       return null;
     }
 
-    // Calculate portion sizes
     const portionSizes = calculatePortionSize(gender, numberOfMeals);
     const warningMessage = checkMainMeals(mealTypes);
     let combineData = { portionSizes, warningMessage };
-    // Send response
     res.json({
       success: true,
       message: "data get successfully",
@@ -497,6 +488,7 @@ exports.datWiseMealPlan = async (req, res) => {
   try {
     const { day, mealType } = req.body;
     const email = req.user.email;
+    console.log("🚀 ~ exports.datWiseMealPlan= ~ email:", email);
 
     if (!email || !mealType) {
       let missingFields = [];
@@ -517,6 +509,7 @@ exports.datWiseMealPlan = async (req, res) => {
       return sendResponse(res, 404, "User not found");
     }
     const gender = existingUser.gender.toLowerCase();
+    const dietType = existingUser.dietType;
 
     let query = {};
     if (day) {
@@ -533,7 +526,7 @@ exports.datWiseMealPlan = async (req, res) => {
         { $match: query },
         {
           $lookup: {
-            from: "Alimenti",
+            from: "alimentis",
             localField: "Items._id",
             foreignField: "_id",
             as: "ItemsDetails",
@@ -568,8 +561,8 @@ exports.datWiseMealPlan = async (req, res) => {
         },
         {
           $project: {
+            "Items.name": 0,
             ItemsDetails: 0,
-            "Items.Name": 0,
           },
         },
       ])
@@ -583,6 +576,49 @@ exports.datWiseMealPlan = async (req, res) => {
       );
     }
 
+    const mealNames = mealData.flatMap((meal) =>
+      meal.Items.map((item) => item.Name)
+    );
+
+    const mealIds = mealData.flatMap((meal) =>
+      meal.Items.map((item) => item._id)
+    );
+
+    const additionalAlimentiItems = await Alimenti.find({
+      Name: { $in: mealNames },
+      _id: { $nin: mealIds },
+    });
+    if (dietType === "Muscle-Building") {
+      additionalAlimentiItems.forEach((item) => {
+        mealData.forEach((meal) => {
+          meal.Items.forEach((mealItem) => {
+            if (mealItem.Name === item.Name) {
+              if (!mealItem.alimentiDetails) {
+                mealItem.alimentiDetails = [];
+              }
+              mealItem.alimentiDetails.push(item);
+            }
+          });
+        });
+      });
+    }
+    const mealTypeCount = mealType.length;
+
+    if (dietType === "Muscle-Building") {
+      console.log("🚀 ~ exports.datWiseMealPlan= ~ dietType:", dietType);
+      mealData.forEach((meal) => {
+        if (gender === "male") {
+          meal.Level = mealTypeCount >= 4 && mealTypeCount <= 5 ? 2 : 3;
+        } else {
+          meal.Level = mealTypeCount >= 4 && mealTypeCount <= 5 ? 1 : 2;
+        }
+      });
+    } else {
+      mealData.forEach((meal) => {
+        meal.Level = null;
+      });
+    }
+
     const mealTypeOrder = {};
 
     mealType.forEach((meal, index) => {
@@ -593,12 +629,9 @@ exports.datWiseMealPlan = async (req, res) => {
       return mealTypeOrder[a.Meal] - mealTypeOrder[b.Meal];
     });
 
-    return (
-      sendResponse(res, 200, "Meal plan data retrieved successfully", {
-        mealData: mealData,
-      }),
-      console.log("🚀 ~ exports.datWiseMealPlan= ~ mealData:", mealData)
-    );
+    return sendResponse(res, 200, "Meal plan data retrieved successfully", {
+      mealData: mealData,
+    });
   } catch (error) {
     console.error(error);
     return sendResponse(res, 500, error?.message || "Something went wrong");
@@ -613,7 +646,6 @@ exports.findAllGroupArray = async (req, res) => {
       { $project: { _id: 0, "List of Alternatives (Food group)": "$_id" } },
     ]);
 
-    // Extracting only the values from the array of objects
     const data = alternatives.map(
       (item) => item["List of Alternatives (Food group)"]
     );
@@ -626,5 +658,105 @@ exports.findAllGroupArray = async (req, res) => {
   } catch (error) {
     console.error(error);
     res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+exports.updateUserProfile = async (req, res) => {
+  try {
+    const userId = req.userId;
+    const updateData = req.body;
+
+    if (Object.keys(updateData).length === 0) {
+      return sendResponse(res, 400, "No data to update");
+    }
+    const validFields = [
+      "username",
+      "email",
+      "gender",
+      "sexAtBirth",
+      "dietType",
+      "dietaryRestrictions",
+      "languagePreference",
+      "password",
+      "authToken",
+      "termsAndConditions",
+      "IDnumber",
+      "isDietaryRestrictions",
+    ];
+    const keysToUpdate = Object.keys(updateData);
+
+    const isValidUpdate = keysToUpdate.every((key) =>
+      validFields.includes(key)
+    );
+    if (!isValidUpdate) {
+      return sendResponse(res, 400, "Invalid field(s) in update request");
+    }
+
+    const updatedUser = await User.findByIdAndUpdate(userId, updateData, {
+      new: true,
+      runValidators: true,
+    });
+
+    if (!updatedUser) {
+      return sendResponse(res, 404, "User not found");
+    }
+
+    return sendResponse(res, 200, "User updated successfully", {
+      updatedUser: updatedUser,
+    });
+  } catch (error) {
+    console.error("Error updating user profile:", error);
+    return sendResponse(res, 500, error.message || "Something went wrong");
+  }
+};
+
+exports.getRecipeDetailsByCuisine = async (req, res) => {
+  try {
+    const { _id, cuisine } = req.query;
+
+    if (!_id) {
+      return sendResponse(res, 400, "Recipe ID (_id) is required.");
+    }
+
+    const recipe = await Alimenti.findById(_id);
+
+    if (!recipe) {
+      return sendResponse(res, 404, "Recipe not found.");
+    }
+
+    let responseData = {};
+
+    if (cuisine === "Italian") {
+      responseData = {
+        ...responseData,
+        RecipeInstructions: recipe.RecipeInstructionsItalian,
+        RecipeIngredients: recipe.RecipeIngredientsItalian,
+        Name: recipe.ItalianName,
+      };
+    } else if (cuisine === "Swedish") {
+      responseData = {
+        ...responseData,
+        RecipeInstructions: recipe.RecipeInstructionsSwedish,
+        RecipeIngredients: recipe.RecipeIngredientsSwedish,
+        Name: recipe.SwedishName,
+      };
+    } else {
+      responseData = {
+        ...responseData,
+        RecipeInstructions: recipe.RecipeInstructions,
+        RecipeIngredients: recipe.RecipeIngredients,
+        Name: recipe.Name,
+      };
+    }
+
+    return sendResponse(
+      res,
+      200,
+      "Recipe details fetched successfully.",
+      responseData
+    );
+  } catch (error) {
+    console.error("Error in getRecipeDetailsByCuisine:", error.message);
+    return sendResponse(res, 500, "Failed to fetch recipe details.");
   }
 };

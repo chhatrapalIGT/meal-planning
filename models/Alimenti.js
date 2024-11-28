@@ -1,14 +1,71 @@
-const mongoose = require('mongoose');
-
+const mongoose = require("mongoose");
 
 const menDietPlanSchema = new mongoose.Schema({
-    Name: { type: String, required: true },
-    IdNumber: { type: Number, required: true },
-    FoodGroup: { type: String, required: true }
-})
+  Name: { type: String, required: true },
+  FoodGroup: { type: String, required: true },
+  TotalProtein: { type: String },
+  AnimalProtein: { type: String },
+  VegetalProtein: { type: String },
+  TotalLipids: { type: String },
+  AnimalLipids: { type: String },
+  VegetalLipids: { type: String },
+  SFA: { type: String },
+  OleicAcid: { type: String },
+  TotalMonounsaturatedFat: { type: String },
+  LinoleicAcid: { type: String },
+  LinolenicAcid: { type: String },
+  OtherPolyunsaturatedFats: { type: String },
+  TotalPolyunsaturatedFats: { type: String },
+  Cholesterol: { type: String },
+  TotalCHO: { type: String },
+  Starch: { type: String },
+  SolubleGlucides: { type: String },
+  Fiber: { type: String },
+  Alcohol: { type: String },
+  Fe: { type: String },
+  Ca: { type: String },
+  Na: { type: String },
+  K: { type: String },
+  P: { type: String },
+  Zn: { type: String },
+  Thiamine: { type: String },
+  Riboflavine: { type: String },
+  Niacine: { type: String },
+  VitaminC: { type: String },
+  VitaminB6: { type: String },
+  FolicAcid: { type: String },
+  RetinolEquivalents: { type: String },
+  Retinol: { type: String },
+  BetaCarotene: { type: String },
+  VitaminE: { type: String },
+  VitaminD: { type: String },
+  Kcal: { type: String },
+  Type: { type: String },
+  ListOfAlternatives: { type: String },
+  ItalianName: { type: String },
+  LactoOvoVegetarian: { type: Number },
+  OvoVegetarian: { type: Number },
+  LactoVegetarian: { type: Number },
+  Vegan: { type: Number },
+  GlutenFree: { type: Number },
+  LactoseFree: { type: Number },
+  EggFree: { type: Number },
+  ShellfishFree: { type: Number },
+  FishFree: { type: Number },
+  NutFree: { type: Number },
+  RecipeInstructionsItalian: { type: String },
+  RecipeIngredientsItalian: { type: String },
+  RecipeIngredients: { type: String },
+  RecipeInstructions: { type: String },
+  RecipeLevel: { type: Number },
+  Cuisine: { type: String },
+  MindDiet: { type: Number },
+  SwedishName: { type: String },
+  RecipeIngredientsSwedish: { type: String },
+  RecipeInstructionsSwedish: { type: String },
+  Notes: { type: String },
+});
 
-
-const Alimenti = mongoose.model('food', menDietPlanSchema);
-
+const Alimenti = mongoose.model("Alimenti", menDietPlanSchema);
 
 module.exports = Alimenti;
