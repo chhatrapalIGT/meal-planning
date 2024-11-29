@@ -28,7 +28,6 @@ exports.register = async (req, res) => {
       termsAndConditions,
       languagePreference,
       dietType,
-      sexAtBirth,
       isDietaryRestrictions,
     } = req.body;
 
@@ -96,7 +95,6 @@ exports.register = async (req, res) => {
       dietType,
       dietaryRestrictions: req.body.dietaryRestrictions || [],
       languagePreference: languagePreference,
-      sexAtBirth: sexAtBirth,
     });
 
     await user.save();

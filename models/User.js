@@ -3,11 +3,6 @@ const mongoose = require("mongoose");
 const userSchema = new mongoose.Schema({
   IDnumber: { type: String, unique: true },
   gender: { type: String, enum: ["Male", "Female", "Others"] },
-  sexAtBirth: {
-    type: String,
-    enum: ["Male", "Female", "Intersex"],
-    required: true,
-  },
   dietType: {
     type: String,
     enum: [
