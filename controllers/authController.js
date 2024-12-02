@@ -486,7 +486,6 @@ exports.datWiseMealPlan = async (req, res) => {
   try {
     const { day, mealType } = req.body;
     const email = req.user.email;
-    console.log("🚀 ~ exports.datWiseMealPlan= ~ email:", email);
 
     if (!email || !mealType) {
       let missingFields = [];
@@ -586,7 +585,7 @@ exports.datWiseMealPlan = async (req, res) => {
       Name: { $in: mealNames },
       _id: { $nin: mealIds },
     });
-    if (dietType === "Muscle-Building") {
+    if (dietType === "Standard-Weight-Loss") {
       additionalAlimentiItems.forEach((item) => {
         mealData.forEach((meal) => {
           meal.Items.forEach((mealItem) => {
@@ -602,8 +601,7 @@ exports.datWiseMealPlan = async (req, res) => {
     }
     const mealTypeCount = mealType.length;
 
-    if (dietType === "Muscle-Building") {
-      console.log("🚀 ~ exports.datWiseMealPlan= ~ dietType:", dietType);
+    if (dietType === "Standard-Weight-Loss") {
       mealData.forEach((meal) => {
         if (gender === "male") {
           meal.Level = mealTypeCount >= 4 && mealTypeCount <= 5 ? 2 : 3;
