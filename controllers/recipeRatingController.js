@@ -4,14 +4,12 @@ require("dotenv").config({ path: ".env" });
 
 exports.rateRecipe = async (req, res) => {
   try {
-    const { recipeId, userId, rating, suggestion } = req.body;
+    const { recipeId, rating, suggestion } = req.body;
 
-    if (!recipeId || !userId || !rating) {
-      return sendResponse(
-        res,
-        400,
-        "Recipe ID, User ID, and Rating are required."
-      );
+    const userId = req.userId;
+
+    if (!recipeId || !rating) {
+      return sendResponse(res, 400, "Recipe ID, and Rating are required.");
     }
 
     if (rating < 1 || rating > 5) {
