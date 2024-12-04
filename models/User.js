@@ -17,7 +17,14 @@ const userSchema = new mongoose.Schema({
   },
   dietaryRestrictions: {
     type: [String],
-    enum: ["GlutenFree", "LactoseFree", "LactoOvoVegetarian", "Vegan"],
+    enum: [
+      "GlutenFree",
+      "LactoseFree",
+      "LactoOvoVegetarian",
+      "Vegan",
+      "OvoVegetarian",
+      "LactoVegetarian",
+    ],
   },
   languagePreference: {
     type: String,
@@ -28,7 +35,6 @@ const userSchema = new mongoose.Schema({
   username: { type: String, required: true },
   email: { type: String, required: true, unique: true },
   password: { type: String },
-  // authToken: { type: String },
   isVerified: { type: Boolean, default: false },
   termsAndConditions: { type: Boolean, default: true },
   isDietaryRestrictions: { type: Boolean, default: false },

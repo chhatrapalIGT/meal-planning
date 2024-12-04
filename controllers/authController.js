@@ -100,9 +100,6 @@ exports.register = async (req, res) => {
     await user.save();
     const authToken = jwt.sign({ userId: user._id }, process.env.SECRET);
 
-    // user.authToken = authToken;
-    // await user.save();
-
     return sendResponse(res, 200, "User registered successfully", {
       authToken: authToken,
     });
@@ -243,15 +240,7 @@ exports.forgotPassword = async (req, res) => {
     }
 
     const otp = generateOTP();
-    const expiresAt = new Date(Date.now() + 2 * 60 * 1000); // 2 minutes from now
-
-    // Temporary stop the resend otp functionality for 1 minute
-    //  -->>
-    // const existingOTP = await OTP.findOneAndUpdate(
-    //   { email: email.toLowerCase() },
-    //   { otp, expiresAt, lastResend: new Date(0) }, // Set lastResend to a past date
-    //   { upsert: true, new: true }
-    // );
+    const expiresAt = new Date(Date.now() + 2 * 60 * 1000);
 
     let existingOTP = await OTP.findOne({ email: email.toLowerCase() });
 
