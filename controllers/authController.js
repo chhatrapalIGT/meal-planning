@@ -663,7 +663,6 @@ exports.updateUserProfile = async (req, res) => {
       "username",
       "email",
       "gender",
-      "sexAtBirth",
       "dietType",
       "dietaryRestrictions",
       "languagePreference",
