@@ -30,6 +30,7 @@ exports.register = async (req, res) => {
       dietType,
       isDietaryRestrictions,
     } = req.body;
+    console.log("🚀 ~ exports.register= ~ req.body:", req.body);
 
     if (password !== confirmPassword) {
       return sendResponse(res, 400, "Password don't match");
@@ -66,8 +67,12 @@ exports.register = async (req, res) => {
       if (!confirmPassword) missingFields.push("confirmPassword");
       if (!gender) missingFields.push("gender");
       if (!dietType) missingFields.push("dietType");
-      if (!isDietaryRestrictions) missingFields.push("isDietaryRestrictions");
-
+      if (
+        isDietaryRestrictions === null ||
+        isDietaryRestrictions === undefined
+      ) {
+        missingFields.push("isDietaryRestrictions");
+      }
       return sendResponse(
         res,
         400,
